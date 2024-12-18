@@ -1,74 +1,60 @@
 from PIL import Image
 import numpy as np
 
+def find_color_centers(image_path): #use image path without semi colon
+    try:
+        # Open the image and convert it to RGB format
+        img = Image.open(image_path).convert("RGB")
+        img_array = np.array(img)
 
-# Function to check if image matches Poland flag
-def is_poland_flag(image):
-    # Convert image to RGB and then to numpy array
-    img_rgb = image.convert("RGB")
-    img_array = np.array(img_rgb)
+        # Get the dimensions of the image
+        height, width, _ = img_array.shape
 
-    # Split image into two horizontal parts (top half and bottom half)
-    height, width, _ = img_array.shape
-    top_half = img_array[:height // 2, :]
-    bottom_half = img_array[height // 2:, :]
+        # Flatten the image to analyze all pixels
+        pixel_coords = np.indices((height, width)).reshape(2, -1).T
+        pixels = img_array.reshape(-1, 3)
 
-    # Check color of top and bottom halves (for Poland: white top, red bottom)
-    top_color = np.mean(top_half, axis=(0, 1))  # Get average color of the top half
-    bottom_color = np.mean(bottom_half, axis=(0, 1))  # Get average color of the bottom half
+        # Define thresholds for red and white
+        red_threshold = [150, 0, 0]
+        white_threshold = [200, 200, 200]
 
-    # Define thresholds for white and red colors (using RGB values)
-    white_threshold = np.array([230, 230, 230])  # RGB values close to white
-    red_threshold = np.array([200, 0, 0])  # RGB values close to red
+        # Identify red and white pixels
+        red_pixels = np.all(pixels > red_threshold, axis=1)
+        white_pixels = np.all(pixels > white_threshold, axis=1)
 
-    # Check if the top half is white and the bottom half is red
-    if np.all(top_color > white_threshold) and np.all(bottom_color > red_threshold):
-        return True
-    return False
+        # Find the y-coordinates (row values) of red and white pixels
+        red_y_coords = pixel_coords[red_pixels][:, 0]
+        white_y_coords = pixel_coords[white_pixels][:, 0]
 
+        # Calculate the average y-coordinates (vertical center) for red and white
+        red_center_y = np.mean(red_y_coords) if red_y_coords.size > 0 else None
+        white_center_y = np.mean(white_y_coords) if white_y_coords.size > 0 else None
 
-# Function to check if image matches Indonesia flag
-def is_indonesia_flag(image):
-    # Convert image to RGB and then to numpy array
-    img_rgb = image.convert("RGB")
-    img_array = np.array(img_rgb)
+        return red_center_y, white_center_y
 
-    # Split image into two horizontal parts (top half and bottom half)
-    height, width, _ = img_array.shape
-    top_half = img_array[:height // 2, :]
-    bottom_half = img_array[height // 2:, :]
+    except Exception as e:
+        return f"Error: {e}"
 
-    # Check color of top and bottom halves (for Indonesia: red top, white bottom)
-    top_color = np.mean(top_half, axis=(0, 1))  # Get average color of the top half
-    bottom_color = np.mean(bottom_half, axis=(0, 1))  # Get average color of the bottom half
+def determine_flag(image_path):
+    red_center, white_center = find_color_centers(image_path)
 
-    # Define thresholds for red and white colors (using RGB values)
-    red_threshold = np.array([200, 0, 0])  # RGB values close to red
-    white_threshold = np.array([230, 230, 230])  # RGB values close to white
-
-    # Check if the top half is red and the bottom half is white
-    if np.all(top_color > red_threshold) and np.all(bottom_color > white_threshold):
-        return True
-    return False
-
-
-# Main function to check the flag
-def check_flag(image_path):
-    # Open image using Pillow
-    image = Image.open(image_path)
-
-    # Resize image to a standard size (optional, can be removed)
-    image = image.resize((400, 200))  # Resize for better comparison
-
-    # Check if the image is the flag of Poland or Indonesia
-    if is_poland_flag(image):
-        print("The image is the flag of Poland.")
-    elif is_indonesia_flag(image):
-        print("The image is the flag of Indonesia.")
+    if red_center and white_center:
+        # Compare the vertical positions of red and white centers
+        if red_center < white_center:
+            return "The flag is of Indonesia (Red on top, White on bottom)."
+        elif white_center < red_center:
+            return "The flag is of Poland (White on top, Red on bottom)."
+        else:
+            return "Cannot determine flag; centers are at the same height."
     else:
-        print("The image is neither the flag of Poland nor Indonesia.")
+        return "Could not detect sufficient red or white areas to identify the flag."
 
-
-# Test with user input image
+# Test the function with an image
 image_path = input("Enter the path to the image: ")
-check_flag(image_path)
+result = determine_flag(image_path)
+print(result)
+
+    
+
+
+ 
